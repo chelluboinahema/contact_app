@@ -2,7 +2,10 @@ package com.natwest.learning.ContactApp.controller;
 
 import com.natwest.learning.ContactApp.model.Contact;
 import com.natwest.learning.ContactApp.service.ContactService;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,74 +13,128 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("api/data/contact")
+@RequestMapping("/api/data/contact")
+@Tag(name = "Contact Controller", description = "APIs for managing contacts")
 public class ContactController {
-    @Autowired
-    private ContactService service;
-    private ResponseEntity<?> response;
 
+    private final ContactService service;
+
+    public ContactController(ContactService service) {
+        this.service = service;
+    }
+
+    // ---------------- CREATE CONTACT ----------------
     @PostMapping
-    public ResponseEntity<?> addContact(@RequestBody Contact contact){
-        System.out.println("hello");
-        System.out.println(contact);
-        boolean state=service.addContact(contact);
-        if(state){
-            response=new ResponseEntity<String>("Created", HttpStatus.CREATED);
-        }else{
-            response=new ResponseEntity<String>("Failure", HttpStatus.BAD_REQUEST);
+    @Operation(
+            summary = "Create Contact",
+            description = "Creates a new contact"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Contact created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request")
+    })
+    public ResponseEntity<String> addContact(@RequestBody Contact contact) {
+
+        boolean created = service.addContact(contact);
+
+        if (created) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body("Contact created successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Failed to create contact");
         }
-        return response;
     }
+
+    // ---------------- GET ALL CONTACTS ----------------
     @GetMapping
-    public ResponseEntity<?> listAllContact(){
-        List< Contact> contactList=service.getAllContacts();
-        if(contactList!=null){
-            response=new ResponseEntity<List<Contact>>(contactList, HttpStatus.ACCEPTED);
-        }
-        else {
-            response=new ResponseEntity<String>("Failure",HttpStatus.BAD_REQUEST);
-        }
-        return response;
+    @Operation(
+            summary = "Get all contacts",
+            description = "Fetches list of all contacts"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contacts fetched successfully")
+    })
+    public ResponseEntity<List<Contact>> getAllContacts() {
+
+        List<Contact> contacts = service.getAllContacts();
+
+        return ResponseEntity.ok(contacts);
     }
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> DeleteContact(@PathVariable int id){
-        Contact contact=service.getContact(id);
-        System.out.println(contact);
-        if(contact!=null){
-            service.deleteContact(id);
-            System.out.println(contact);
-            response=new ResponseEntity<String>("Deleted",HttpStatus.FOUND);
-        }
-        else{
-            response=new ResponseEntity<String>("NotFound",HttpStatus.BAD_REQUEST);
-        }
-        return response;
-    }
+
+    // ---------------- GET CONTACT BY ID ----------------
     @GetMapping("/{id}")
-    public  ResponseEntity<?> getContact(@PathVariable String id){
-        Contact contact=service.getContact(Integer.parseInt(id));
-        if(contact!=null){
-            response=new ResponseEntity<Contact>(contact,HttpStatus.FOUND);
+    @Operation(
+            summary = "Get contact by ID",
+            description = "Fetch a single contact using ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contact found"),
+            @ApiResponse(responseCode = "404", description = "Contact not found")
+    })
+    public ResponseEntity<?> getContactById(@PathVariable int id) {
+
+        Contact contact = service.getContact(id);
+
+        if (contact != null) {
+            return ResponseEntity.ok(contact);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Contact not found");
         }
-        else{
-            response= new ResponseEntity<String>("Not Found",HttpStatus.BAD_REQUEST);
-        }
-        return response;
     }
+
+    // ---------------- DELETE CONTACT ----------------
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Delete contact",
+            description = "Deletes a contact by ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contact deleted"),
+            @ApiResponse(responseCode = "404", description = "Contact not found")
+    })
+    public ResponseEntity<String> deleteContact(@PathVariable int id) {
+
+        Contact contact = service.getContact(id);
+
+        if (contact != null) {
+            service.deleteContact(id);
+            return ResponseEntity.ok("Contact deleted successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Contact not found");
+        }
+    }
+
+    // ---------------- UPDATE CONTACT ----------------
     @PutMapping("/{id}")
-    public ResponseEntity<?> UpdateContact(@PathVariable int id, @RequestBody Contact contact){
-        Contact contact1=service.getContact(id);
-        contact1.setContactId(contact.getContactId());
-        contact1.setEmail(contact.getEmail());
-        contact1.setName(contact.getName());
-        contact1.setPhoneNo(contact.getPhoneNo());
-        boolean flag=service.addContact(contact);
-        if(flag){
-            response=new ResponseEntity<String>("Contact Object Updated", HttpStatus.CREATED);
+    @Operation(
+            summary = "Update contact",
+            description = "Updates an existing contact by ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contact updated"),
+            @ApiResponse(responseCode = "404", description = "Contact not found")
+    })
+    public ResponseEntity<String> updateContact(
+            @PathVariable int id,
+            @RequestBody Contact updatedContact) {
+
+        Contact existingContact = service.getContact(id);
+
+        if (existingContact == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Contact not found");
         }
-        else{
-            response=new ResponseEntity<String>("Failure",HttpStatus.BAD_REQUEST);
-        }
-        return response;
+
+        // update fields (DO NOT override ID)
+        existingContact.setName(updatedContact.getName());
+        existingContact.setEmail(updatedContact.getEmail());
+        existingContact.setPhoneNo(updatedContact.getPhoneNo());
+
+        service.addContact(existingContact); // or service.updateContact()
+
+        return ResponseEntity.ok("Contact updated successfully");
     }
 }
