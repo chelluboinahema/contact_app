@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/data/contact")
-@Tag(name = "Contact Controller", description = "APIs for managing contacts")
+@Tag(name = "Contact API", description = "APIs for managing contacts")
 public class ContactController {
 
     private final ContactService service;
